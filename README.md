@@ -90,15 +90,8 @@ Cada notebook tiene una celda de texto antes de cada celda de código que explic
 Requisitos en Databricks:
 
 1. El esquema `workspace.inferiores` y el Volume `workspace.inferiores.scraper`, donde se guarda el caché de páginas.
-2. La tabla `workspace.inferiores.bronze_fuera_alcance`, que lee `02_jugadores` para excluir jugadores fuera del alcance. Ningún notebook de este repositorio la crea. De ella solo se usa la columna `player_id`:
-
-```sql
-CREATE TABLE IF NOT EXISTS workspace.inferiores.bronze_fuera_alcance
-  (player_id STRING, motivo STRING, detectado_en STRING) USING DELTA;
-```
-
-3. Los `.ipynb` importados en la misma carpeta del workspace: los demás notebooks cargan `ciclo` con `%run ./ciclo`.
-4. Un Job con las tareas y dependencias del diagrama.
+2. Los `.ipynb` importados en la misma carpeta del workspace: los demás notebooks cargan `ciclo` con `%run ./ciclo`.
+3. Un Job con las tareas y dependencias del diagrama.
 
 ## Stack
 
