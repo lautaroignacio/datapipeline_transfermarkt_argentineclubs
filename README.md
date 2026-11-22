@@ -407,9 +407,57 @@ ORDER BY GROUPING(club_familia_name), debut DESC, fifa DESC;
 
 </details>
 
+## Volumen de datos y ejecución
+
+Cifras al último ciclo publicado (semana del 9/11/2026).
+
+**Universo:** 105 clubes formadores y 13,828 jugadores. Jugadores con peso de formación asignado, por lustro de debut (total 13,528):
+
+| lustro de debut | jugadores |
+|---|---|
+| 1985-1989 | 100 |
+| 1990-1994 | 259 |
+| 1995-1999 | 698 |
+| 2000-2004 | 820 |
+| 2005-2009 | 1,295 |
+| 2010-2014 | 2,227 |
+| 2015-2019 | 1,783 |
+| 2020-2024 | 3,073 |
+| 2025-2029 | 557 |
+| Sin debut | 2,716 |
+
+**Tablas:** 17 bronze, 8 silver y 18 gold, más 2 tablas auxiliares con los códigos de liga por temporada. Las más grandes de cada capa:
+
+| capa | tabla | filas |
+|---|---|---|
+| bronze | `bronze_player_raw` | 342,627 |
+| bronze | `bronze_pe_arrivals` | 46,783 |
+| bronze | `bronze_departures` | 19,618 |
+| silver | `silver_player_stats` | 227,721 |
+| silver | `silver_transfers` | 97,579 |
+| silver | `silver_market_value_history` | 71,022 |
+| gold | `gold_formacion_fifa` | 163,929 |
+| gold | `gold_minutos` | 152,190 |
+| gold | `gold_formacion_debut` | 128,603 |
+| gold | `gold_linea_tiempo` | 110,672 |
+| gold | `gold_aporte` | 32,135 |
+| gold | `gold_ingresos` | 8,832 |
+
+**Traspasos con fee:** 8,832 filas en `gold_ingresos` (2,620 de venta propia y 6,212 de solidaridad), entre 1987 y septiembre de 2026.
+
+**Ejecución:** el Job corre todos los días a las 20:00 (hora de Argentina), con un tope de horas por día. Un ciclo semanal completo (extracción, clasificaciones, silver y gold) tarda entre 2 y 3 días corridos desde el inicio hasta la publicación. Hasta ahora se publicaron 3 ciclos.
+
+## Limitaciones
+
+- **Fuente única.** Todo parte de Transfermarkt. Los huecos y errores de la fuente se arrastran a las métricas (ver los casos de Delgado y Lavezzi en los resultados): el pipeline reparte lo que está registrado y no lo corrige.
+- **Ingresos parciales.** Solo se computan los traspasos con `fee`; las cesiones y los pases libres no suman. Los montos son nominales, sin ajuste por inflación, y favorecen a las posiciones ofensivas.
+- **Scraping y API no oficial.** La extracción depende de las páginas de Transfermarkt y de una API no oficial (`transfermarkt-api`). Si Transfermarkt frena los pedidos (HTTP 202, 403 o 429), la corrida se corta; por eso el ciclo semanal es reanudable y usa un caché de páginas.
+- **Alcance acotado.** Solo entran jugadores cuya carrera empieza desde 1985 y que se formaron en los clubes del universo (Primera y Primera Nacional). Quienes se formaron en otros clubes no aparecen.
+
 ## Decisiones de diseño
 
 **Notebooks como tareas del Job.** Se eligieron notebooks como tareas del Job por simplicidad de despliegue en Databricks; `ciclo` es la única dependencia compartida y se carga con `%run`.
+
 
 ## Fuentes y acceso
 
