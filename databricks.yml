@@ -32,6 +32,11 @@ resources:
 
       max_concurrent_runs: 1
 
+      # Parámetro del Job real (tope de horas por día de 02_jugadores).
+      parameters:
+        - name: MAX_HOURS
+          default: "12"
+
       tasks:
         - task_key: 01_extraccion
           notebook_task:
@@ -77,3 +82,13 @@ resources:
           run_if: ALL_DONE
           notebook_task:
             notebook_path: ./04_gold.ipynb
+
+        # Validaciones de calidad sobre gold. Sin run_if: solo corre si 04_gold
+        # terminó bien. Además el notebook tiene su propia compuerta: se saltea
+        # si el ciclo no se publicó en las últimas 12 horas (FORZAR=1 la ignora).
+        # Si un chequeo falla, corta el Job con error.
+        - task_key: 05_calidad
+          depends_on:
+            - task_key: 04_gold
+          notebook_task:
+            notebook_path: ./05_calidad.ipynb
