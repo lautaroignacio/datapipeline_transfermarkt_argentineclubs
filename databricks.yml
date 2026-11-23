@@ -1,0 +1,79 @@
+# Databricks Asset Bundle: el Job pipeline_inferiores como código.
+# Se despliega con:  databricks bundle validate && databricks bundle deploy
+#
+# Supuestos (ajustar si no coinciden con el repo):
+#   - los notebooks .ipynb están en la raíz del repo, junto a este archivo
+#   - el Job corre en serverless (sin definición de cluster)
+
+bundle:
+  name: pipeline_inferiores
+
+# Sin `host`: se despliega al workspace donde se abre el bundle.
+# dev (modo desarrollo): prefija el nombre del Job con tu usuario y pausa los
+# schedules, así que no duplica ni pisa el Job que ya corre en producción.
+targets:
+  dev:
+    mode: development
+    default: true
+  prod: {}
+
+resources:
+  jobs:
+    pipeline_inferiores:
+      name: pipeline_inferiores
+
+      # Diario a las 20:00 hora de Argentina. Queda PAUSADO en el primer deploy
+      # para no duplicar corridas con el Job que ya existe; pasar a UNPAUSED
+      # recién cuando se desactive el viejo o se enlace con `bundle deployment bind`.
+      schedule:
+        quartz_cron_expression: "0 0 20 * * ?"
+        timezone_id: America/Argentina/Buenos_Aires
+        pause_status: PAUSED
+
+      max_concurrent_runs: 1
+
+      tasks:
+        - task_key: 01_extraccion
+          notebook_task:
+            notebook_path: ./01_extraccion.ipynb
+
+        - task_key: 01b_primer_equipo
+          depends_on:
+            - task_key: 01_extraccion
+          notebook_task:
+            notebook_path: ./01b_primer_equipo.ipynb
+
+        - task_key: 02_jugadores
+          depends_on:
+            - task_key: 01b_primer_equipo
+          notebook_task:
+            notebook_path: ./02_jugadores.ipynb
+
+        # silver y gold usan "If all done": corren aunque una tarea previa
+        # haya cortado, y cada notebook decide con el estado del ciclo si le toca.
+        - task_key: 03_silver
+          depends_on:
+            - task_key: 02_jugadores
+          run_if: ALL_DONE
+          notebook_task:
+            notebook_path: ./03_silver.ipynb
+
+        - task_key: clasificar_clubes_externos
+          depends_on:
+            - task_key: 03_silver
+          notebook_task:
+            notebook_path: ./clasificar_clubes_externos.ipynb
+
+        - task_key: clasificar_competiciones
+          depends_on:
+            - task_key: 03_silver
+          notebook_task:
+            notebook_path: ./clasificar_competiciones.ipynb
+
+        - task_key: 04_gold
+          depends_on:
+            - task_key: clasificar_clubes_externos
+            - task_key: clasificar_competiciones
+          run_if: ALL_DONE
+          notebook_task:
+            notebook_path: ./04_gold.ipynb
