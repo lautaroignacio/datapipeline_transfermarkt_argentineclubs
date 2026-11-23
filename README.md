@@ -38,6 +38,7 @@ flowchart LR
     D --> F[clasificar_competiciones]
     E --> G[04_gold]
     F --> G
+    G --> H[05_calidad]
 ```
 
 Las tareas `silver` y `gold` tienen la condición de ejecución *If all done*, y cada una consulta el estado del ciclo antes de hacer nada.
@@ -57,11 +58,12 @@ Cada notebook tiene una celda de texto antes de cada celda de código que explic
 | `clasificar_clubes_externos` | Clasifica los clubes que no se conocen (padre, juvenil, marcador) recorriendo las carreras de los jugadores y visitando sus páginas | `bronze_clubes_externos` |
 | `clasificar_competiciones` | Busca en Transfermarkt la categoría de cada competición (liga y nivel, copa, juvenil, etc.) | `bronze_competiciones` |
 | `04_gold` | Construye las 18 tablas gold | `gold_*` |
+| `05_calidad` | Valida la capa gold: unicidad de claves, fechas plausibles y pesos de aporte entre 0 y 1. Solo lee tablas y termina con error si algún chequeo falla. Corre solo si el ciclo se publicó en las últimas 12 horas | no escribe tablas |
 
 ## Ciclo semanal y reanudación
 
 - Cada ciclo corresponde a una semana y se identifica por su lunes en hora de Argentina. Se abre uno nuevo solo cuando el anterior ya se publicó y empezó una semana nueva.
-- Cada notebook decide si le toca correr según el estado del ciclo (`bronze_ciclos`): la extracción corre hasta terminar; `02_jugadores` corre hasta tener todas las llamadas de todos los jugadores; silver, las dos clasificaciones y gold corren solo cuando los jugadores están completos y el ciclo no se publicó. Al terminar, `04_gold` marca el ciclo como publicado.
+- Cada notebook decide si le toca correr según el estado del ciclo (`bronze_ciclos`): la extracción corre hasta terminar; `02_jugadores` corre hasta tener todas las llamadas de todos los jugadores; silver, las dos clasificaciones y gold corren solo cuando los jugadores están completos y el ciclo no se publicó. Al terminar, `04_gold` marca el ciclo como publicado. `05_calidad` valida las tablas gold sin modificar el ciclo, solo en las horas siguientes a la publicación.
 - En cada ciclo se refrescan los jugadores activos; los retirados quedan congelados.
 - Las corridas se pueden cortar y retomar: lo pendiente se calcula siempre desde las tablas, y las páginas ya descargadas salen de un caché en un Volume de Databricks.
 - Si Transfermarkt frena (HTTP 202, 403 o 429), la corrida se corta. Los notebooks que bajan jugadores dejan además una pausa registrada en `bronze_corridas`, y `02_jugadores` tiene un tope de horas por día.
