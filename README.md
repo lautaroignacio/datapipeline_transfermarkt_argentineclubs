@@ -4,13 +4,16 @@ Pipeline de datos en Databricks que descarga datos de [Transfermarkt](https://ww
 
 > Este repositorio contiene solo código y documentación. No incluye datos descargados y no está afiliado a Transfermarkt.
 
+**Resultados:** ver la sección [Resultados](#resultados): aporte de cada club según métrica y segmento, ingresos por formación y casos de jugadores.
+
 ## Qué permite responder
 
 | Pregunta | Tabla |
-|---|---|
+| --- | --- |
 | ¿Qué clubes formaron más jugadores? | `gold_ranking_formados` |
 | ¿Cuántos jugadores salen de las inferiores de cada club y adónde van? | `gold_salidas`, `gold_ranking_salidos` |
 | ¿Cómo cambia el ranking por camada (año de debut)? | `gold_ranking_camada` |
+| ¿Cuánto aporta cada club a una métrica elegida (goles, partidos, asistencias), por posición y lustro de debut? | `gold_aporte` |
 | ¿Cuánto le correspondería a cada club formador por solidaridad en los traspasos con `fee`? | `gold_ingresos` |
 
 No hay un puntaje único de éxito: la capa gold tiene una tabla por tema y se cruzan en Power BI.
@@ -44,7 +47,7 @@ Las tareas `silver` y `gold` tienen la condición de ejecución *If all done*, y
 Cada notebook tiene una celda de texto antes de cada celda de código que explica qué hace, sus parámetros y sus tablas.
 
 | Notebook | Qué hace | Tablas principales |
-|---|---|---|
+| --- | --- | --- |
 | `00_codigos` | Descubre los códigos de liga de cada temporada a partir de cuatro clubes. No forma parte del Job: documenta de dónde salen los códigos que se usan después | `ligas_spielplan_semilla`, `ligas_codigos_por_anio` |
 | `ciclo` | Funciones del estado del ciclo semanal. Los demás notebooks lo cargan con `%run ./ciclo`; no es una tarea del Job | `bronze_ciclos` |
 | `01_extraccion` | Clubes de cada liga y temporada, equipos juveniles de cada club y movimientos (entradas y salidas) de cada equipo en cada temporada | `bronze_clubs`, `bronze_youth_teams_v2`, `bronze_arrivals`, `bronze_departures` |
@@ -71,7 +74,7 @@ Cada notebook tiene una celda de texto antes de cada celda de código que explic
 ## Capa gold
 
 | Tema | Tablas |
-|---|---|
+| --- | --- |
 | Clubes y trayectorias | `gold_club_familia`, `gold_linea_tiempo` |
 | Debut | `gold_debut` |
 | Formación | `gold_formacion_fifa`, `gold_formacion_debut` |
@@ -409,7 +412,7 @@ ORDER BY GROUPING(club_familia_name), debut DESC, fifa DESC;
 
 ## Volumen de datos y ejecución
 
-Cifras al último ciclo publicado (semana del 9/11/2026).
+Cifras al 22/11/2026.
 
 **Universo:** 105 clubes formadores y 13,828 jugadores. Jugadores con peso de formación asignado, por lustro de debut (total 13,528):
 
@@ -445,7 +448,11 @@ Cifras al último ciclo publicado (semana del 9/11/2026).
 
 **Traspasos con fee:** 8,832 filas en `gold_ingresos` (2,620 de venta propia y 6,212 de solidaridad), entre 1987 y septiembre de 2026.
 
-**Ejecución:** el Job corre todos los días a las 20:00 (hora de Argentina), con un tope de horas por día. Un ciclo semanal completo (extracción, clasificaciones, silver y gold) tarda entre 2 y 3 días corridos desde el inicio hasta la publicación. Hasta ahora se publicaron 3 ciclos.
+**Ejecución:** el Job corre todos los días a las 20:00 (hora de Argentina), con un tope de horas por día. Un ciclo semanal completo (extracción, clasificaciones, silver y gold) tarda entre 2 y 3 días corridos desde el inicio hasta la publicación. Hasta ahora se publicaron 4 ciclos.
+
+![Historial de corridas del Job pipeline_inferiores](https://github.com/user-attachments/assets/35ea441a-5852-4da4-957d-45927290d01f)
+
+*Historial del Job `pipeline_inferiores`: una corrida diaria a las 20:00 (hora de Argentina). Las corridas largas son las de descarga de jugadores; cuando el ciclo ya está completo, cada notebook consulta su estado y la corrida termina en un par de minutos.*
 
 ## Limitaciones
 
@@ -453,11 +460,7 @@ Cifras al último ciclo publicado (semana del 9/11/2026).
 - **Ingresos parciales.** Solo se computan los traspasos con `fee`; las cesiones y los pases libres no suman. Los montos son nominales, sin ajuste por inflación, y favorecen a las posiciones ofensivas.
 - **Scraping y API no oficial.** La extracción depende de las páginas de Transfermarkt y de una API no oficial (`transfermarkt-api`). Si Transfermarkt frena los pedidos (HTTP 202, 403 o 429), la corrida se corta; por eso el ciclo semanal es reanudable y usa un caché de páginas.
 - **Alcance acotado.** Solo entran jugadores cuya carrera empieza desde 1985 y que se formaron en los clubes del universo (Primera y Primera Nacional). Quienes se formaron en otros clubes no aparecen.
-
-## Decisiones de diseño
-
-**Notebooks como tareas del Job.** Se eligieron notebooks como tareas del Job por simplicidad de despliegue en Databricks; `ciclo` es la única dependencia compartida y se carga con `%run`.
-
+- **Jugadores sin peso de formación.** 303 jugadores (2.2 % del universo) no tienen peso de formación y por eso no aparecen en `gold_aporte`. A 217 de ellos la fuente no les registra fecha de nacimiento, así que no se pueden asignar sus años de formación (de los 12 a los 23) a ningún club.
 
 ## Fuentes y acceso
 
@@ -475,3 +478,7 @@ Requisitos en Databricks:
 ## Stack
 
 Databricks (serverless), Delta Lake, Python, PySpark y Spark SQL, `curl`, Power BI.
+
+## Decisiones de diseño
+
+**Notebooks como tareas del Job.** Se eligieron notebooks como tareas del Job por simplicidad de despliegue en Databricks; `ciclo` es la única dependencia compartida y se carga con `%run`.
