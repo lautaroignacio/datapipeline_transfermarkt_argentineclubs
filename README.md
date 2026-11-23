@@ -1,6 +1,6 @@
 # Transfermarkt Scraper + Data Pipeline | Argentine Youth Academy Ranking (careers from 1985)
 
-Pipeline de datos en Databricks que descarga datos de [Transfermarkt](https://www.transfermarkt.com) para determinar **qué clubes argentinos forman mejores juveniles**. Parte de los clubes de Primera y de Primera Nacional, llega hasta cada jugador que empezó su carrera en ellos y deja tablas por tema listas para cruzar en Power BI.
+Pipeline de datos en Databricks que descarga datos de [Transfermarkt](https://www.transfermarkt.com) para determinar **qué clubes argentinos forman mejores juveniles**. Parte de los clubes de Primera y de Primera Nacional, llega hasta cada jugador que empezó su carrera en ellos y deja tablas por tema listas para cruzar con SQL.
 
 > Este repositorio contiene solo código y documentación. No incluye datos descargados y no está afiliado a Transfermarkt.
 
@@ -16,7 +16,7 @@ Pipeline de datos en Databricks que descarga datos de [Transfermarkt](https://ww
 | ¿Cuánto aporta cada club a una métrica elegida (goles, partidos, asistencias), por posición y lustro de debut? | `gold_aporte` |
 | ¿Cuánto le correspondería a cada club formador por solidaridad en los traspasos con `fee`? | `gold_ingresos` |
 
-No hay un puntaje único de éxito: la capa gold tiene una tabla por tema y se cruzan en Power BI.
+No hay un puntaje único de éxito: la capa gold tiene una tabla por tema y se cruzan con SQL según la pregunta.
 
 ## Alcance
 
@@ -68,6 +68,14 @@ Cada notebook tiene una celda de texto antes de cada celda de código que explic
 - Las corridas se pueden cortar y retomar: lo pendiente se calcula siempre desde las tablas, y las páginas ya descargadas salen de un caché en un Volume de Databricks.
 - Si Transfermarkt frena (HTTP 202, 403 o 429), la corrida se corta. Los notebooks que bajan jugadores dejan además una pausa registrada en `bronze_corridas`, y `02_jugadores` tiene un tope de horas por día.
 - El widget `FORZAR` de `ciclo` permite correr un notebook a mano ignorando el estado del ciclo.
+
+## Cómo se escriben silver y gold
+
+- **Reescritura completa.** Cada tabla silver y gold se escribe entera en cada publicación, con `overwrite` (y `overwriteSchema`) o con `CREATE OR REPLACE TABLE`. No hay escrituras incrementales ni `MERGE`.
+- **Silver** (`03_silver`) parte de `bronze_player_raw`: para cada jugador toma la respuesta más reciente (`fecha` más nueva) de cada llamada con estado `hecho` y la descompone en las 8 tablas, una por tema.
+- **Gold** (`04_gold`) lee silver y las tablas de clasificación (`bronze_clubes_externos` y `bronze_competiciones`) y construye las 18 tablas en el orden del notebook, porque las celdas dependen unas de otras.
+- **Idempotencia.** Como cada tabla se recalcula completa desde bronze, volver a correr un notebook da el mismo resultado, y el control de ciclo evita reconstruir cuando no hay nada nuevo para publicar.
+- **Controles.** Después de cada escritura, `03_silver` y `04_gold` ejecutan consultas de control con `display` (conteos, claves únicas, comparaciones contra silver y muestras al azar) para inspección manual. No cortan el Job: eso lo hace `05_calidad`.
 
 ## Métrica de formación
 
@@ -475,12 +483,14 @@ Requisitos en Databricks:
 
 1. El esquema `workspace.inferiores` y el Volume `workspace.inferiores.scraper`, donde se guarda el caché de páginas.
 2. Los `.ipynb` importados en la misma carpeta del workspace: los demás notebooks cargan `ciclo` con `%run ./ciclo`.
-3. Un Job con las tareas y dependencias del diagrama.
+3. El Job `pipeline_inferiores`, definido como código en `databricks.yml` (Databricks Asset Bundle). Se despliega desde el workspace (Git folder → Deployments → Deploy) o con `databricks bundle deploy`.
 
 ## Stack
 
-Databricks (serverless), Delta Lake, Python, PySpark y Spark SQL, `curl`, Power BI.
+Databricks (serverless), Delta Lake, Python, PySpark y Spark SQL, `curl` y Databricks Asset Bundles.
 
 ## Decisiones de diseño
+
+**Reescritura completa en silver y gold.** Con este volumen (la tabla más grande de silver tiene unas 230.000 filas) reconstruir todo es más simple de razonar y de depurar que mantener cargas incrementales; si el volumen creciera, el paso natural sería pasar a `MERGE`.
 
 **Notebooks como tareas del Job.** Se eligieron notebooks como tareas del Job por simplicidad de despliegue en Databricks; `ciclo` es la única dependencia compartida y se carga con `%run`.
