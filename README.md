@@ -439,6 +439,8 @@ Cifras al 22/11/2026.
 | 2025-2029 | 557 |
 | Sin debut | 2,716 |
 
+> Nota: los 13,528 jugadores con peso de formación incluyen 3 que no figuran en `gold_jugador` (ver [Limitaciones](#limitaciones)), por eso el total no es 13,828 − 303 sino 13,828 − 303 + 3.
+
 **Tablas:** 17 bronze, 8 silver y 18 gold, más 2 tablas auxiliares con los códigos de liga por temporada. Las más grandes de cada capa:
 
 | capa | tabla | filas |
@@ -471,6 +473,7 @@ Cifras al 22/11/2026.
 - **Scraping y API no oficial.** La extracción depende de las páginas de Transfermarkt y de una API no oficial (`transfermarkt-api`). Si Transfermarkt frena los pedidos (HTTP 202, 403 o 429), la corrida se corta; por eso el ciclo semanal es reanudable y usa un caché de páginas.
 - **Alcance acotado.** Solo entran jugadores cuya carrera empieza desde 1985 y que se formaron en los clubes del universo (Primera y Primera Nacional). Quienes se formaron en otros clubes no aparecen.
 - **Jugadores sin peso de formación.** 303 jugadores (2.2 % del universo) no tienen peso de formación y por eso no aparecen en `gold_aporte`. A 217 de ellos la fuente no les registra fecha de nacimiento, así que no se pueden asignar sus años de formación (de los 12 a los 23) a ningún club.
+- **Tres jugadores sin perfil.** Para 3 jugadores (ids 28712, 100508 y 19925) la llamada `profile` de la API devuelve siempre un error 502 (`Unexpected upstream payload for PlayerProfile`), mientras que el resto de sus llamadas (`transfers`, `stats`, `market_value`, `national_career`, `achievements`) se descarga bien. Sin perfil no se genera su fila en `silver_players`, así que no aparecen en `gold_jugador`, pero sí tienen peso de formación y figuran en `gold_formacion_fifa` y `gold_aporte`. De ahí que las tablas de peso tengan 3 jugadores más que `gold_jugador`. El ciclo se completa igual sin sus perfiles y el impacto es de 3 jugadores sobre 13,528. Es un error de la API, no del pipeline.
 
 ## Fuentes y acceso
 
